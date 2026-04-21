@@ -1,0 +1,97 @@
+########################################
+# BUILD TOOLS
+########################################
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+# Wrapper (MANTER versionado)
+!mvnw
+!mvnw.cmd
+!.mvn/wrapper/maven-wrapper.jar
+
+# Gradle
+.gradle/
+build/
+
+# Wrapper (MANTER versionado)
+!gradlew
+!gradlew.bat
+!gradle/wrapper/gradle-wrapper.jar
+
+########################################
+# COMPILED FILES
+########################################
+
+*.class
+*.jar
+*.war
+*.ear
+
+########################################
+# LOGS
+########################################
+
+*.log
+logs/
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+########################################
+# ENV / CONFIG
+########################################
+
+.env
+.env.*
+!.env.example
+
+########################################
+# IDEs
+########################################
+
+# IntelliJ / IDEA
+.idea/
+*.iml
+out/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# VSCode
+.vscode/
+.history/
+
+########################################
+# OS
+########################################
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+########################################
+# TEMP / MISC
+########################################
+
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+*.swo
+
+########################################
+# TEST / COVERAGE
+########################################
+
+coverage/
+*.exec
