@@ -1,165 +1,283 @@
-# SAP SOAP Service (Java 17)
+# SAP SOAP Integration Service (Java 17)
 
-Integração SOAP com serviços SAP utilizando Java 17, com foco em interoperabilidade enterprise, padronização de contratos (WSDL) e comunicação segura entre sistemas legados.
+Serviço de integração robusto para comunicação com SAP via SOAP, projetado com foco em resiliência, observabilidade, contratos fortes (contract-first) e evolução arquitetural (SOAP → REST).
 
-## 📌 Overview
+---
 
-Este projeto demonstra como consumir e/ou expor serviços SOAP em um ambiente moderno (Java 17), mantendo compatibilidade com sistemas SAP que ainda utilizam protocolos baseados em XML.
+## 🎯 Objetivo
 
-A aplicação segue um modelo orientado a contratos (contract-first), utilizando WSDL/XSD para garantir consistência na comunicação.
+Este projeto implementa uma camada de integração confiável entre sistemas modernos e serviços SAP baseados em SOAP, abordando desafios reais de ambientes enterprise:
+
+- Interoperabilidade com sistemas legados
+- Garantia de contrato (WSDL/XSD)
+- Resiliência a falhas de rede/SAP
+- Idempotência e controle de reprocessamento
+- Observabilidade e troubleshooting
+
+---
 
 ## 🧱 Stack Tecnológica
 
 - Java 17
+- Spring Boot
+- Spring Web Services (Spring-WS)
+- Apache CXF (opcional)
 - Maven
-- SOAP (JAX-WS / Spring WS)
-- XML / WSDL / XSD
-- (Opcional) Spring Boot
-
-> SOAP continua sendo amplamente utilizado em integrações corporativas, especialmente com SAP e sistemas legados. :contentReference[oaicite:1]{index=1}
+- JAXB (XML Binding)
+- Resilience4j
+- Micrometer + OpenTelemetry
+- Docker
 
 ---
 
 ## 🏗️ Arquitetura
 
-A aplicação segue o fluxo clássico de integração SOAP:
+### 🔷 Visão de Alto Nível
 
 ```
 
-Client → SOAP Envelope → Service Layer → SAP Backend
+[ Client / API REST ]
+↓
+[ Adapter Layer (REST → SOAP) ]
+↓
+[ Application Service ]
+↓
+[ SOAP Client (Contract-first) ]
+↓
+[ SAP Backend ]
 
 ````
 
-### Componentes principais:
+---
 
-- **Client SOAP**
-  - Responsável por construir e enviar requests XML
-- **Binding (WSDL)**
-  - Define contrato e operações disponíveis
-- **Marshaller/Unmarshaller**
-  - Conversão entre objetos Java e XML
-- **Service Layer**
-  - Orquestra chamadas e trata regras de negócio
-- **Integration Layer**
-  - Comunicação direta com SAP
+## 🔩 Componentes Arquiteturais
+
+### 1. Adapter Layer (Anti-Corruption Layer)
+
+Responsável por desacoplar o mundo REST do contrato SOAP.
+
+- Tradução REST → SOAP
+- Normalização de payload
+- Versionamento de API
+
+> Evita vazamento de XML/SOAP para o domínio
 
 ---
 
-## ⚙️ Pré-requisitos
+### 2. Application Service
 
-- Java 17+
-- Maven 3+
-- Acesso ao WSDL do serviço SAP
+Orquestra o fluxo de integração:
+
+- Validação de entrada
+- Controle de idempotência
+- Retry policies
+- Tratamento de erro semântico
 
 ---
 
-## 🚀 Como executar
+### 3. SOAP Client (Contract-First)
 
-### 1. Clonar o repositório
+Gerado a partir de WSDL:
+
+- Forte tipagem
+- Segurança de contrato
+- Menor risco de quebra em runtime
+
+---
+
+### 4. Resilience Layer
+
+Implementado com Resilience4j:
+
+- Retry com backoff exponencial
+- Circuit Breaker
+- Timeout controlado
+- Bulkhead (isolamento)
+
+---
+
+### 5. Observability Layer
+
+- Logs estruturados (JSON)
+- Métricas (Micrometer)
+- Tracing distribuído (OpenTelemetry)
+
+---
+
+## 🔁 Idempotência e Reprocessamento
+
+Problema clássico em integrações SAP:
+
+- Timeout ≠ falha real
+- Reenvio pode gerar duplicidade
+
+### Estratégia adotada:
+
+- Chave de idempotência (ex: requestId)
+- Persistência de estado (PENDING, SUCCESS, FAILED)
+- Lock otimista
+- Deduplicação de chamadas
+
+---
+
+## 🔌 Contract-First (WSDL)
+
+Geração automática de classes:
 
 ```bash
-git clone https://github.com/Will-thom/sap-soap-service-java-17.git
-cd sap-soap-service-java-17
+mvn clean generate-sources
 ````
 
-### 2. Build do projeto
+Usando:
+
+* `jaxws-maven-plugin` ou
+* Apache CXF Codegen
+
+---
+
+## ⚙️ Configuração
+
+### application.yml
+
+```yaml
+soap:
+  client:
+    base-url: https://sap.example.com/ws
+    timeout: 3000
+    retry:
+      max-attempts: 3
+```
+
+---
+
+## 🚀 Execução
 
 ```bash
 mvn clean install
-```
-
-### 3. Executar
-
-```bash
 mvn spring-boot:run
 ```
 
-ou (caso não use Spring Boot):
+---
+
+## 🐳 Docker
 
 ```bash
-mvn exec:java
+docker build -t sap-soap-service .
+docker run -p 8080:8080 sap-soap-service
 ```
-
----
-
-## 🔌 Consumo de serviços SOAP
-
-O consumo é baseado no contrato WSDL.
-
-### Exemplo de fluxo:
-
-1. Gerar classes a partir do WSDL
-2. Criar request
-3. Enviar via client SOAP
-4. Processar response
-
-```java
-// Exemplo simplificado
-MyRequest request = new MyRequest();
-request.setField("value");
-
-MyResponse response = soapClient.call(request);
-```
-
----
-
-## 📄 Estrutura do Projeto
-
-```
-src/
- ├── main/
- │   ├── java/
- │   │   ├── config/        # Configurações SOAP
- │   │   ├── client/        # Cliente SOAP
- │   │   ├── service/       # Regras de negócio
- │   │   └── model/         # DTOs (gerados do WSDL)
- │   └── resources/
- │       ├── wsdl/          # Contratos WSDL
- │       └── xsd/           # Schemas XML
-```
-
----
-
-## ⚠️ Observações importantes (Java 17 + SOAP)
-
-* Algumas APIs antigas (`javax.xml.soap`) não vêm mais embutidas no JDK
-* Pode ser necessário adicionar dependências explicitamente
-* Problemas comuns incluem:
-
-  * `NoClassDefFoundError: SOAPException`
-  * incompatibilidade de libs antigas
-
-Isso ocorre porque mudanças no JDK removeram módulos antigos do Java EE. ([Stack Overflow][1])
 
 ---
 
 ## 🧪 Testes
 
-Recomenda-se validar via:
+### Estratégia
 
+* Unitários → lógica de negócio
+* Integração → mock SOAP server
+* Contract tests → validação WSDL
+
+Ferramentas:
+
+* JUnit 5
+* WireMock (mock SOAP)
 * SoapUI
-* Postman (com XML manual)
-* Testes automatizados com mocks
 
 ---
 
-## 📈 Possíveis melhorias
+## 📊 Observabilidade
 
-* Observabilidade (logs estruturados + tracing)
-* Retry e circuit breaker (Resilience4j)
-* Conversão SOAP → REST (facade)
-* Cache de responses
-* Timeout tuning
+### Métricas expostas:
+
+* Latência por operação SOAP
+* Taxa de erro
+* Retry count
+* Circuit breaker state
+
+### Logs incluem:
+
+* correlationId
+* requestId
+* payload reduzido (safe logging)
+
+---
+
+## ⚠️ Problemas Reais (e como o projeto resolve)
+
+### ❌ Problema: instabilidade do SAP
+
+✔ Solução: Retry + Circuit Breaker
+
+---
+
+### ❌ Problema: duplicidade de processamento
+
+✔ Solução: Idempotência
+
+---
+
+### ❌ Problema: debugging difícil (XML gigante)
+
+✔ Solução: Logging estruturado + tracing
+
+---
+
+### ❌ Problema: acoplamento forte com SOAP
+
+✔ Solução: Adapter REST
+
+---
+
+## 🔄 Evolução Arquitetural
+
+### Estado atual:
+
+SOAP Integration Layer
+
+### Próximos passos:
+
+* API Gateway na frente
+* Event-driven (Kafka) para desacoplamento
+* Cache de responses SAP
+* CQRS para leitura performática
+
+---
+
+## 📁 Estrutura do Projeto
+
+```
+src/main/java/com/company/integration/
+
+├── adapter/          # REST → SOAP
+├── application/      # Orquestração
+├── domain/           # Regras de negócio
+├── infrastructure/
+│   ├── soap/         # Client SOAP
+│   ├── config/       # Beans/config
+│   └── resilience/   # Retry/CircuitBreaker
+├── observability/    # Logs, metrics, tracing
+└── idempotency/      # Controle de duplicidade
+```
+
+---
+
+## 🔐 Segurança
+
+* HTTPS obrigatório
+* Possível suporte a:
+
+  * WS-Security
+  * Basic Auth
+  * OAuth2 (no adapter REST)
 
 ---
 
 ## 🤝 Contribuição
 
+Fluxo padrão:
+
 1. Fork
-2. Create branch (`feature/...`)
-3. Commit
-4. Push
-5. Open PR
+2. Branch `feature/...`
+3. PR com descrição técnica clara
 
 ---
 
@@ -169,12 +287,22 @@ MIT
 
 ---
 
-## 💡 Motivação
+## 💡 Por que isso importa?
 
-Apesar da ascensão de APIs REST, SOAP ainda é crítico em ambientes corporativos, especialmente em integrações com SAP e sistemas financeiros.
+Integrações SOAP com SAP são:
 
-Este projeto serve como base para:
+* Críticas
+* Sensíveis a falhas
+* Difíceis de evoluir
 
-* Integrações enterprise
-* Estudos de interoperabilidade
-* Migração gradual para arquiteturas modernas
+Este projeto demonstra como trazer práticas modernas para um contexto legado sem quebrar compatibilidade.
+
+---
+
+## 🧠 Diferenciais Técnicos
+
+* Anti-Corruption Layer bem definida
+* Idempotência real (não fake)
+* Resiliência production-grade
+* Observabilidade desde o início
+* Pronto para evolução para event-driven
